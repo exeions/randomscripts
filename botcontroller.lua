@@ -6,9 +6,8 @@ local nbbot = getgenv().nbbot
 local prefix = getgenv().prefix
 local botrender = getgenv().botrender
 local printcmd = getgenv().printcmd
-local versionfromconfig = getgenv().version
 
--- cmd, bool and stuff
+-- cmd bools
 local cmdstatus = true
 local cmdindex = true
 local cmdfollow = true
@@ -19,7 +18,6 @@ local cmdreset = true
 local cmdjump = true
 local cmdsay = true
 local cmdunfollow = true
-local cmdreset = true
 local cmdorbit = true
 local cmdunorbit = true
 local cmdgoto = true
@@ -47,29 +45,25 @@ local cmdtower = true
 local cmduntower = true
 local cmdfix = true
 
-local towerbool = nil
-local followbool = nil
-local orbitbool = nil
-local orbitbool2 = nil
-local orbitbool3 = nil
-local orbitbool4 = nil
-local orbitbool5 = nil
-local orbitbool6 = nil
-local alignoffset = nil
-local booljump = nil
+local towerbool = false
+local followbool = false
+local orbitbool = false
+local orbitbool2 = false
+local orbitbool3 = false
+local orbitbool4 = false
+local orbitbool5 = false
+local orbitbool6 = false
+local booljump = false
 local indexcircle = nil
-local distance = nil
 local channel = 1
-local wormbool = nil
-local boolspin = nil
-local adminbool = nil
-local stalkbool = nil
+local wormbool = false
+local boolspin = false
+local adminbool = false
+local stalkbool = false
 local Admins = {}
 
---version of the script
-print("Asu's bot controller VERSION: 0.2.1")
+print("Asu's bot controller VERSION: 0.2.1 (getgenv edition)")
 
---print cmds in console
 if printcmd then
     print("Asu's Bot Controller")
     print("-------------------------------------------------------------------")
@@ -120,12 +114,10 @@ end
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TextChatService = game:GetService("TextChatService")
-local VirtualUser = game:GetService("VirtualUser")
 
 local player = game.Players.LocalPlayer
 local displayName = player.DisplayName
 local user = player.Name
-local offset = math.random(0, 360)
 
 local ownerPlayer = game.Players:FindFirstChild(owner)
 local adminNotConnected = {}
@@ -160,14 +152,13 @@ else
 end
 
 if not index then
-    if player.Name == owner then
-    else
+    if player.Name ~= owner then
         warn("No bot or owner corresponding with: " .. table.concat(bots, ", ") .. " or " .. owner .. " for this instance.")
         return
     end
 end
 
--- Chat message (bots still need this for ;say)
+-- Chat message (used by ;say, ;status etc)
 local function chatMessage(str)
     str = tostring(str)
     if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
@@ -177,25 +168,22 @@ local function chatMessage(str)
     end
 end
 
+-- find player by partial name
 local function findPlayerByName(partialName)
     if partialName:lower() == "me" then
         return game.Players:FindFirstChild(owner)
     end
-
     if partialName:lower() == "random" then
         local players = game.Players:GetPlayers()
         if #players > 0 then
             return players[math.random(1, #players)]
         end
     end
-
     local bestMatch = nil
     local bestMatchScore = 0
-
     for _, plr in pairs(game.Players:GetPlayers()) do
         local nameMatch = plr.Name:lower():find(partialName:lower())
         local displayNameMatch = plr.DisplayName:lower():find(partialName:lower())
-
         if nameMatch or displayNameMatch then
             local score = (nameMatch and #plr.Name or 0) + (displayNameMatch and #plr.DisplayName or 0)
             if score > bestMatchScore then
@@ -204,8 +192,16 @@ local function findPlayerByName(partialName)
             end
         end
     end
-
     return bestMatch
+end
+
+-- split string helper (replaces broken :split())
+local function splitString(str, sep)
+    local result = {}
+    for part in str:gmatch("[^" .. sep .. "]+") do
+        table.insert(result, part)
+    end
+    return result
 end
 
 local function removeVelocity()
@@ -241,19 +237,8 @@ local function disablebool()
 end
 
 local function fix()
+    disablebool()
     removeVelocity()
-    towerbool = false
-    followbool = false
-    orbitbool = false
-    orbitbool2 = false
-    orbitbool3 = false
-    orbitbool4 = false
-    orbitbool5 = false
-    orbitbool6 = false
-    booljump = false
-    wormbool = false
-    boolspin = false
-    stalkbool = false
     game.Workspace.Gravity = 196.2
     player.Character:BreakJoints()
 end
@@ -262,138 +247,109 @@ local function tpcircle(distance)
     if distance == 0 then distance = 0.0001 end
     local targetPlayer = Players:FindFirstChild(owner)
     if not targetPlayer or not targetPlayer.Character then return end
-    local targetHumanoidRootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not targetHumanoidRootPart then return end
-    local playerCharacter = player.Character
-    local playerHumanoidRootPart = playerCharacter:FindFirstChild("HumanoidRootPart")
-    if not playerHumanoidRootPart then return end
+    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return end
+    local playerHRP = player.Character:FindFirstChild("HumanoidRootPart")
+    if not playerHRP then return end
     removeVelocity()
-    local angle = math.rad(0 + indexcircle)
-    local offsetX = distance * math.cos(angle)
-    local offsetZ = distance * math.sin(angle)
-    local newPosition = targetHumanoidRootPart.Position + Vector3.new(offsetX, 0, offsetZ)
-    local newCFrame = CFrame.new(newPosition, targetHumanoidRootPart.Position)
-    playerHumanoidRootPart.CFrame = newCFrame
+    local angle = math.rad(indexcircle)
+    local newPosition = targetHRP.Position + Vector3.new(distance * math.cos(angle), 0, distance * math.sin(angle))
+    playerHRP.CFrame = CFrame.new(newPosition, targetHRP.Position)
 end
 
 local function tparch(distance)
     if distance == 0 then distance = 0.0001 end
     local targetPlayer = Players:FindFirstChild(owner)
     if not targetPlayer or not targetPlayer.Character then return end
-    local targetHumanoidRootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not targetHumanoidRootPart then return end
-    local playerCharacter = player.Character
-    local playerHumanoidRootPart = playerCharacter:FindFirstChild("HumanoidRootPart")
-    if not playerHumanoidRootPart then return end
+    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return end
+    local playerHRP = player.Character:FindFirstChild("HumanoidRootPart")
+    if not playerHRP then return end
     removeVelocity()
-    local angle = math.rad(0 + (indexcircle) / 2)
-    local offsetX = distance * math.cos(angle)
-    local offsetZ = distance * math.sin(angle)
-    local newPosition = targetHumanoidRootPart.Position + Vector3.new(offsetX, 0, offsetZ)
-    local newCFrame = CFrame.new(newPosition, targetHumanoidRootPart.Position)
-    playerHumanoidRootPart.CFrame = newCFrame
+    local angle = math.rad(indexcircle / 2)
+    local newPosition = targetHRP.Position + Vector3.new(distance * math.cos(angle), 0, distance * math.sin(angle))
+    playerHRP.CFrame = CFrame.new(newPosition, targetHRP.Position)
 end
 
 local function align(targetPlayer)
     if not targetPlayer or not targetPlayer.Character then return end
-    local targetHumanoidRootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not targetHumanoidRootPart then return end
-    if player and player.Character then
-        local localHumanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
-        if localHumanoidRootPart then
-            removeVelocity()
-            local offset = targetHumanoidRootPart.CFrame.RightVector * -5 * index
-            localHumanoidRootPart.CFrame = targetHumanoidRootPart.CFrame + offset
-        end
-    end
+    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return end
+    local localHRP = player.Character:FindFirstChild("HumanoidRootPart")
+    if not localHRP then return end
+    removeVelocity()
+    localHRP.CFrame = targetHRP.CFrame + targetHRP.CFrame.RightVector * -5 * index
 end
 
-local function goto(targetPlayer)
+local function gotoPlayer(targetPlayer)
     if not targetPlayer or not targetPlayer.Character then return end
-    local targetHumanoidRootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not targetHumanoidRootPart then return end
-    if player and player.Character then
-        local localHumanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
-        if localHumanoidRootPart then
-            removeVelocity()
-            localHumanoidRootPart.CFrame = targetHumanoidRootPart.CFrame + Vector3.new(0, 0, 0)
-        end
-    end
+    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return end
+    local localHRP = player.Character:FindFirstChild("HumanoidRootPart")
+    if not localHRP then return end
+    removeVelocity()
+    localHRP.CFrame = targetHRP.CFrame
 end
 
 local function tower(targetPlayer)
     if not targetPlayer or not targetPlayer.Character then return end
-    local targetHumanoidRootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not targetHumanoidRootPart then return end
+    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return end
     towerbool = true
-    local heartbeatConnection
-    heartbeatConnection = RunService.Heartbeat:Connect(function()
-        if not towerbool or not targetHumanoidRootPart or not targetPlayer.Character then
-            heartbeatConnection:Disconnect()
+    local conn
+    conn = RunService.Heartbeat:Connect(function()
+        if not towerbool or not targetPlayer.Character then
+            conn:Disconnect()
             return
         end
-        if player and player.Character then
-            local localHumanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
-            if localHumanoidRootPart then
-                local offset = targetHumanoidRootPart.CFrame.UpVector * 5 * index
-                localHumanoidRootPart.CFrame = targetHumanoidRootPart.CFrame + offset
-                removeVelocity()
-            end
+        local localHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if localHRP then
+            localHRP.CFrame = targetHRP.CFrame + targetHRP.CFrame.UpVector * 5 * index
+            removeVelocity()
         end
     end)
 end
 
 local function followPlayer(targetPlayer)
-    if targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        while followbool and targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") do
-            local humanoidRootPart = targetPlayer.Character.HumanoidRootPart
-            player.Character.Humanoid:MoveTo(humanoidRootPart.Position)
-            wait(0.1)
-        end
-    else
-        warn("Target player or their character is not valid.")
+    while followbool and targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") do
+        player.Character.Humanoid:MoveTo(targetPlayer.Character.HumanoidRootPart.Position)
+        task.wait(0.1)
     end
 end
 
 local function spin(spinSpeed)
     local character = player.Character or player.CharacterAdded:Wait()
     local root = character:FindFirstChild("HumanoidRootPart")
-    if root then
-        local existingSpin = root:FindFirstChild("Spinning")
-        if existingSpin then existingSpin:Destroy() end
-        local Spin = Instance.new("BodyAngularVelocity")
-        Spin.Name = "Spinning"
-        Spin.Parent = root
-        Spin.MaxTorque = Vector3.new(0, math.huge, 0)
-        Spin.AngularVelocity = Vector3.new(0, spinSpeed, 0)
-        while boolspin do
-            wait(0.1)
-        end
-        Spin:Destroy()
-    end
+    if not root then return end
+    local existing = root:FindFirstChild("Spinning")
+    if existing then existing:Destroy() end
+    local s = Instance.new("BodyAngularVelocity")
+    s.Name = "Spinning"
+    s.Parent = root
+    s.MaxTorque = Vector3.new(0, math.huge, 0)
+    s.AngularVelocity = Vector3.new(0, spinSpeed, 0)
+    while boolspin do task.wait(0.1) end
+    s:Destroy()
 end
 
 local function worm(msgtarget2)
-    local indexworm = table.find(bots, user)
+    local indexworm = table.find(bots, Use_Displayname and displayName or user)
     if not indexworm then return end
     if indexworm > 1 then
-        local targetBotName = bots[indexworm - 1]
-        local targetPlayer = findPlayerByName(targetBotName)
+        local targetPlayer = findPlayerByName(bots[indexworm - 1])
         if targetPlayer then
             wormbool = true
             while wormbool and targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") do
-                local humanoidRootPart = targetPlayer.Character.HumanoidRootPart
-                player.Character.Humanoid:MoveTo(humanoidRootPart.Position)
-                wait(0.1)
+                player.Character.Humanoid:MoveTo(targetPlayer.Character.HumanoidRootPart.Position)
+                task.wait(0.1)
             end
         end
     else
         if msgtarget2 and msgtarget2.Character and msgtarget2.Character:FindFirstChild("HumanoidRootPart") then
             followbool = true
             while followbool and msgtarget2 and msgtarget2.Character and msgtarget2.Character:FindFirstChild("HumanoidRootPart") do
-                local humanoidRootPart = msgtarget2.Character.HumanoidRootPart
-                player.Character.Humanoid:MoveTo(humanoidRootPart.Position)
-                wait(0.1)
+                player.Character.Humanoid:MoveTo(msgtarget2.Character.HumanoidRootPart.Position)
+                task.wait(0.1)
             end
         end
     end
@@ -402,23 +358,19 @@ end
 local function orbitPlayer(targetPlayer, speed, r)
     game.Workspace.Gravity = 0
     if r == 0 then r = 0.0001 end
-    local playerCharacter = player.Character
-    local playerHumanoidRootPart = playerCharacter and playerCharacter:FindFirstChild("HumanoidRootPart")
-    if not playerHumanoidRootPart then return end
-    local targetHumanoidRootPart = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not targetHumanoidRootPart then return end
+    local playerHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not playerHRP then return end
+    local targetHRP = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return end
     local rotation = indexcircle
-    local orbitConnection
-    orbitConnection = RunService.Heartbeat:Connect(function()
-        if not orbitbool or not targetPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            orbitConnection:Disconnect()
-            return
+    local conn
+    conn = RunService.Heartbeat:Connect(function()
+        if not orbitbool or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            conn:Disconnect() return
         end
         removeVelocity()
-        local newCFrame = CFrame.new(targetHumanoidRootPart.Position) * CFrame.Angles(0, math.rad(rotation), 0) * CFrame.new(r, 0, 0)
-        playerHumanoidRootPart.CFrame = newCFrame
-        local lookAtCFrame = CFrame.new(playerHumanoidRootPart.Position, targetHumanoidRootPart.Position)
-        playerHumanoidRootPart.CFrame = lookAtCFrame
+        playerHRP.CFrame = CFrame.new(targetHRP.Position) * CFrame.Angles(0, math.rad(rotation), 0) * CFrame.new(r, 0, 0)
+        playerHRP.CFrame = CFrame.new(playerHRP.Position, targetHRP.Position)
         rotation = (rotation + speed) % 360
     end)
 end
@@ -426,23 +378,19 @@ end
 local function orbitPlayer2(targetPlayer, speed, r)
     game.Workspace.Gravity = 0
     if r == 0 then r = 0.0001 end
-    local playerCharacter = player.Character
-    local playerHumanoidRootPart = playerCharacter and playerCharacter:FindFirstChild("HumanoidRootPart")
-    if not playerHumanoidRootPart then return end
-    local targetHumanoidRootPart = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not targetHumanoidRootPart then return end
+    local playerHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not playerHRP then return end
+    local targetHRP = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return end
     local rotation = indexcircle
-    local orbitConnection
-    orbitConnection = RunService.Heartbeat:Connect(function()
-        if not orbitbool2 or not targetPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            orbitConnection:Disconnect()
-            return
+    local conn
+    conn = RunService.Heartbeat:Connect(function()
+        if not orbitbool2 or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            conn:Disconnect() return
         end
         removeVelocity()
-        local newCFrame = CFrame.new(targetHumanoidRootPart.Position) * CFrame.Angles(math.rad(rotation), math.rad(rotation), 0) * CFrame.new(r, 0, 0)
-        playerHumanoidRootPart.CFrame = newCFrame
-        local lookAtCFrame = CFrame.new(playerHumanoidRootPart.Position, targetHumanoidRootPart.Position)
-        playerHumanoidRootPart.CFrame = lookAtCFrame
+        playerHRP.CFrame = CFrame.new(targetHRP.Position) * CFrame.Angles(math.rad(rotation), math.rad(rotation), 0) * CFrame.new(r, 0, 0)
+        playerHRP.CFrame = CFrame.new(playerHRP.Position, targetHRP.Position)
         rotation = (rotation + speed) % 360
     end)
 end
@@ -450,23 +398,19 @@ end
 local function orbitPlayer3(targetPlayer, speed, r)
     game.Workspace.Gravity = 0
     if r == 0 then r = 0.0001 end
-    local playerCharacter = player.Character
-    local playerHumanoidRootPart = playerCharacter and playerCharacter:FindFirstChild("HumanoidRootPart")
-    if not playerHumanoidRootPart then return end
-    local targetHumanoidRootPart = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not targetHumanoidRootPart then return end
-    removeVelocity()
+    local playerHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not playerHRP then return end
+    local targetHRP = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return end
     local rotation = indexcircle
-    local orbitConnection
-    orbitConnection = RunService.Heartbeat:Connect(function()
-        if not orbitbool3 or not targetPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            orbitConnection:Disconnect()
-            return
+    local conn
+    conn = RunService.Heartbeat:Connect(function()
+        if not orbitbool3 or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            conn:Disconnect() return
         end
-        local newCFrame = CFrame.new(targetHumanoidRootPart.Position) * CFrame.Angles(math.rad(rotation), math.rad(rotation), math.rad(rotation)) * CFrame.new(r, 0, 0)
-        playerHumanoidRootPart.CFrame = newCFrame
-        local lookAtCFrame = CFrame.new(playerHumanoidRootPart.Position, targetHumanoidRootPart.Position)
-        playerHumanoidRootPart.CFrame = lookAtCFrame
+        removeVelocity()
+        playerHRP.CFrame = CFrame.new(targetHRP.Position) * CFrame.Angles(math.rad(rotation), math.rad(rotation), math.rad(rotation)) * CFrame.new(r, 0, 0)
+        playerHRP.CFrame = CFrame.new(playerHRP.Position, targetHRP.Position)
         rotation = (rotation + speed) % 360
     end)
 end
@@ -474,23 +418,19 @@ end
 local function orbitPlayer4(targetPlayer, speed, r)
     game.Workspace.Gravity = 0
     if r == 0 then r = 0.0001 end
-    local playerCharacter = player.Character
-    local playerHumanoidRootPart = playerCharacter and playerCharacter:FindFirstChild("HumanoidRootPart")
-    if not playerHumanoidRootPart then return end
-    local targetHumanoidRootPart = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not targetHumanoidRootPart then return end
-    removeVelocity()
+    local playerHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not playerHRP then return end
+    local targetHRP = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return end
     local rotation = indexcircle
-    local orbitConnection
-    orbitConnection = RunService.Heartbeat:Connect(function()
-        if not orbitbool4 or not targetPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            orbitConnection:Disconnect()
-            return
+    local conn
+    conn = RunService.Heartbeat:Connect(function()
+        if not orbitbool4 or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            conn:Disconnect() return
         end
-        local newCFrame = CFrame.new(targetHumanoidRootPart.Position) * CFrame.Angles(math.rad(rotation), 0, math.rad(rotation)) * CFrame.new(r, 0, 0)
-        playerHumanoidRootPart.CFrame = newCFrame
-        local lookAtCFrame = CFrame.new(playerHumanoidRootPart.Position, targetHumanoidRootPart.Position)
-        playerHumanoidRootPart.CFrame = lookAtCFrame
+        removeVelocity()
+        playerHRP.CFrame = CFrame.new(targetHRP.Position) * CFrame.Angles(math.rad(rotation), 0, math.rad(rotation)) * CFrame.new(r, 0, 0)
+        playerHRP.CFrame = CFrame.new(playerHRP.Position, targetHRP.Position)
         rotation = (rotation + speed) % 360
     end)
 end
@@ -498,23 +438,19 @@ end
 local function orbitPlayer5(targetPlayer, speed, r)
     game.Workspace.Gravity = 0
     if r == 0 then r = 0.0001 end
-    local playerCharacter = player.Character
-    local playerHumanoidRootPart = playerCharacter and playerCharacter:FindFirstChild("HumanoidRootPart")
-    if not playerHumanoidRootPart then return end
-    local targetHumanoidRootPart = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not targetHumanoidRootPart then return end
+    local playerHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not playerHRP then return end
+    local targetHRP = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return end
     local rotation = indexcircle
-    local orbitConnection
-    orbitConnection = RunService.Heartbeat:Connect(function()
-        if not orbitbool5 or not targetPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            orbitConnection:Disconnect()
-            return
+    local conn
+    conn = RunService.Heartbeat:Connect(function()
+        if not orbitbool5 or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            conn:Disconnect() return
         end
         removeVelocity()
-        local newCFrame = CFrame.new(targetHumanoidRootPart.Position) * CFrame.Angles(math.rad(math.random(0, 360)), math.rad(math.random(0, 360)), math.rad(math.random(0, 360))) * CFrame.new(r, 0, 0)
-        playerHumanoidRootPart.CFrame = newCFrame
-        local lookAtCFrame = CFrame.new(playerHumanoidRootPart.Position, targetHumanoidRootPart.Position)
-        playerHumanoidRootPart.CFrame = lookAtCFrame
+        playerHRP.CFrame = CFrame.new(targetHRP.Position) * CFrame.Angles(math.rad(math.random(0,360)), math.rad(math.random(0,360)), math.rad(math.random(0,360))) * CFrame.new(r, 0, 0)
+        playerHRP.CFrame = CFrame.new(playerHRP.Position, targetHRP.Position)
         rotation = (rotation + speed) % 360
     end)
 end
@@ -522,46 +458,35 @@ end
 local function orbitPlayer6(targetPlayer, speed, r)
     game.Workspace.Gravity = 0
     if r == 0 then r = 0.0001 end
-    local playerCharacter = player.Character
-    local playerHumanoidRootPart = playerCharacter and playerCharacter:FindFirstChild("HumanoidRootPart")
-    if not playerHumanoidRootPart then return end
-    local targetHumanoidRootPart = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not targetHumanoidRootPart then return end
+    local playerHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not playerHRP then return end
+    local targetHRP = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return end
     local rotation = indexcircle
-    local orbitConnection
-    orbitConnection = RunService.Heartbeat:Connect(function()
-        if not orbitbool6 or not targetPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            orbitConnection:Disconnect()
-            return
+    local conn
+    conn = RunService.Heartbeat:Connect(function()
+        if not orbitbool6 or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            conn:Disconnect() return
         end
         removeVelocity()
-        local newCFrame = CFrame.new(targetHumanoidRootPart.Position) * CFrame.Angles(math.rad(math.random(0, 360)), math.rad(math.random(0, 360)), 0) * CFrame.new(r, 0, 0)
-        playerHumanoidRootPart.CFrame = newCFrame
-        local lookAtCFrame = CFrame.new(playerHumanoidRootPart.Position, targetHumanoidRootPart.Position)
-        playerHumanoidRootPart.CFrame = lookAtCFrame
+        playerHRP.CFrame = CFrame.new(targetHRP.Position) * CFrame.Angles(math.rad(math.random(0,360)), math.rad(math.random(0,360)), 0) * CFrame.new(r, 0, 0)
+        playerHRP.CFrame = CFrame.new(playerHRP.Position, targetHRP.Position)
         rotation = (rotation + speed) % 360
     end)
 end
 
 local function stalkPlayer(targetPlayer)
-    if targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        while stalkbool and targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") do
-            local humanoidRootPart = targetPlayer.Character.HumanoidRootPart
-            local botHumanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
-            if botHumanoidRootPart then
-                local distance = (botHumanoidRootPart.Position - humanoidRootPart.Position).Magnitude
-                if distance > 25 then
-                    botHumanoidRootPart.CFrame = humanoidRootPart.CFrame + humanoidRootPart.CFrame.LookVector * -2.06546464
-                else
-                    local randomOffset = Vector3.new(math.random(-8, 8), 0, math.random(-8, 8))
-                    local moveToPosition = humanoidRootPart.Position + randomOffset
-                    player.Character.Humanoid:MoveTo(moveToPosition)
-                end
+    while stalkbool and targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") do
+        local targetHRP = targetPlayer.Character.HumanoidRootPart
+        local botHRP = player.Character:FindFirstChild("HumanoidRootPart")
+        if botHRP then
+            if (botHRP.Position - targetHRP.Position).Magnitude > 25 then
+                botHRP.CFrame = targetHRP.CFrame + targetHRP.CFrame.LookVector * -2.065
+            else
+                player.Character.Humanoid:MoveTo(targetHRP.Position + Vector3.new(math.random(-8,8), 0, math.random(-8,8)))
             end
-            wait(0.28)
         end
-    else
-        warn("Target player or their character is not valid.")
+        task.wait(0.28)
     end
 end
 
@@ -574,413 +499,315 @@ end
 
 -- ============================================================
 -- CORE COMMAND HANDLER
--- This is the main function that processes all commands.
--- Called by both the chat listener AND the GUI directly,
--- so commands from the GUI never appear in public chat.
+-- Called by both the getgenv poller (GUI) and chat listener
 -- ============================================================
-local function handleCommand(message, senderName)
-    -- Only accept commands from owner or admins
-    if senderName ~= owner and not table.find(Admins, senderName) then
-        return
+local function handleCommand(command)
+    -- strip prefix if present
+    if command:sub(1, #prefix) == prefix then
+        command = command:sub(#prefix + 1)
     end
+    command = command:match("^%s*(.-)%s*$") -- trim whitespace
 
-    -- Strip prefix if present
-    if message:sub(1, #prefix) == prefix then
-        message = message:sub(#prefix + 1)
-    end
+    -- all commands require the player to be a bot
+    if not table.find(bots, Use_Displayname and displayName or user) then return end
 
-    local command = message
-
-    if command == "status" and cmdstatus and table.find(bots, user) then
+    if command == "status" and cmdstatus then
         chatMessage(displayName .. " (Bot " .. index .. ") is active!")
 
-    elseif command:sub(1, 6) == "admin " and table.find(bots, user) and cmdadmin then
-        local adminargs = command:sub(7)
-        local targetPlayerforadmin = findPlayerByName(adminargs)
-        if targetPlayerforadmin then
-            admin(targetPlayerforadmin)
-            if index == channel then
-                chatMessage(targetPlayerforadmin.Name .. ' is now an admin.')
-            end
+    elseif command:sub(1, 6) == "admin " and cmdadmin then
+        local target = findPlayerByName(command:sub(7))
+        if target then
+            admin(target)
+            if index == channel then chatMessage(target.Name .. " is now an admin.") end
         else
-            if index == channel then
-                chatMessage("Player not found.")
-            end
+            if index == channel then chatMessage("Player not found.") end
         end
 
-    elseif command == "quit" and table.find(bots, user) and cmdquit then
-        cmdstatus = false; cmdindex = false; cmdfollow = false; cmdquit = false
-        cmddance = false; cmdundance = false; cmdreset = false; cmdjump = false
-        cmdsay = false; cmdunfollow = false; cmdorbit = false; orbitbool = false
-        cmdunorbit = false; cmdgoto = false; cmdalign = false; cmdws = false
-        booljump = false; cmdloopjump = false; cmdunloopjump = false
-        cmdcircle = false; cmdchannel = false; orbitbool = false
-        orbitbool5 = false; orbitbool2 = false; orbitbool3 = false
-        orbitbool4 = false; orbitbool6 = false; wormbool = false
-        cmdworm = false; cmdunworm = false; cmdspin = false; cmdunspin = false
-        boolspin = false; cmdadmin = false; adminbool = false; cmdarch = false
-        cmdorbit2 = false; cmdorbit3 = false; cmdorbit4 = false
-        cmdorbit5 = false; cmdorbit6 = false; cmdstalk = false
-        stalkbool = false; cmdunstalk = false; cmdhelp = false
-        towerbool = false; cmdtower = false; cmduntower = false; cmdfix = false
-        followbool = false
-        Admins = {}
-        adminNotConnected = {}
+    elseif command == "quit" and cmdquit then
+        cmdstatus=false; cmdindex=false; cmdfollow=false; cmdquit=false
+        cmddance=false; cmdundance=false; cmdreset=false; cmdjump=false
+        cmdsay=false; cmdunfollow=false; cmdorbit=false; cmdunorbit=false
+        cmdgoto=false; cmdalign=false; cmdws=false; cmdloopjump=false
+        cmdunloopjump=false; cmdcircle=false; cmdchannel=false
+        cmdworm=false; cmdunworm=false; cmdspin=false; cmdunspin=false
+        cmdadmin=false; cmdarch=false; cmdorbit2=false; cmdorbit3=false
+        cmdorbit4=false; cmdorbit5=false; cmdorbit6=false; cmdstalk=false
+        cmdunstalk=false; cmdhelp=false; cmdtower=false; cmduntower=false
+        cmdfix=false; disablebool()
+        Admins = {}; adminNotConnected = {}
         chatMessage("quit")
 
-    elseif command == "index" and cmdindex and table.find(bots, user) then
+    elseif command == "index" and cmdindex then
         chatMessage(displayName .. " index is (" .. index .. ")")
 
-    elseif command:sub(1, 8) == "channel " and cmdchannel and table.find(bots, user) then
+    elseif command:sub(1, 8) == "channel " and cmdchannel then
         local chnl = tonumber(command:sub(9))
-        if chnl > nbbot or chnl < 1 then
-            if index == channel then
-                chatMessage("Error: channel must be between 1 and " .. nbbot)
-            end
+        if not chnl or chnl > nbbot or chnl < 1 then
+            if index == channel then chatMessage("Error: channel must be between 1 and " .. nbbot) end
         else
             channel = chnl
-            if index == channel then
-                chatMessage("Channel is now: " .. channel)
-            end
+            if index == channel then chatMessage("Channel is now: " .. channel) end
         end
 
-    elseif command == "unloopjump" and cmdunloopjump and table.find(bots, user) then
+    elseif command == "unloopjump" and cmdunloopjump then
         booljump = false
 
-    elseif command == "untower" and cmduntower and table.find(bots, user) then
+    elseif command == "untower" and cmduntower then
         towerbool = false
 
-    elseif command == "loopjump" and cmdloopjump and table.find(bots, user) then
+    elseif command == "loopjump" and cmdloopjump then
         booljump = true
         while booljump do
             player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-            wait(0.8)
+            task.wait(0.8)
         end
 
-    elseif command:sub(1, 6) == "align " and cmdalign and table.find(bots, user) then
+    elseif command:sub(1, 6) == "align " and cmdalign then
         disablebool()
-        local playerName = command:sub(7)
-        local targetPlayer = findPlayerByName(playerName)
-        if targetPlayer then
-            align(targetPlayer)
-            if index == channel then
-                chatMessage("yes sir!")
-            end
+        local target = findPlayerByName(command:sub(7))
+        if target then
+            align(target)
+            if index == channel then chatMessage("yes sir!") end
         else
-            if index == channel then
-                chatMessage("Player not found: " .. playerName)
-            end
+            if index == channel then chatMessage("Player not found.") end
         end
 
-    elseif command == "dance" and table.find(bots, user) and cmddance then
+    elseif command:sub(1, 7) == "dance 1" and cmddance then
+        chatMessage("/e dance1")
+    elseif command:sub(1, 7) == "dance 2" and cmddance then
+        chatMessage("/e dance2")
+    elseif command:sub(1, 7) == "dance 3" and cmddance then
+        chatMessage("/e dance3")
+    elseif command:sub(1, 7) == "dance 4" and cmddance then
+        chatMessage("/e dance4")
+    elseif command == "dance" and cmddance then
         chatMessage("/e dance")
 
-    elseif command == "dance 1" and table.find(bots, user) and cmddance then
-        chatMessage("/e dance1")
-
-    elseif command == "dance 2" and table.find(bots, user) and cmddance then
-        chatMessage("/e dance2")
-
-    elseif command == "dance 3" and table.find(bots, user) and cmddance then
-        chatMessage("/e dance3")
-
-    elseif command == "dance 4" and table.find(bots, user) and cmddance then
-        chatMessage("/e dance4")
-
-    elseif command == "help" and table.find(bots, user) and cmdhelp then
+    elseif command == "help" and cmdhelp then
         if index == channel then
             chatMessage("available commands:")
             chatMessage(";status ;index ;follow [plr] ;quit ;dance <number> ;undance ;reset ;jump ;say <sentence> ;unfollow ;orbit [plr] <radius> <speed>")
-            chatMessage(";orbit2 [plr] <radius> <speed> ;orbit3 [plr] <radius> <speed> ;orbit4 [plr] <radius> <speed> ;orbit5 [plr] <radius> <speed>")
-            chatMessage(";orbit6 [plr] <radius> <speed> ;unorbit ;goto [plr] ;align ;ws <number> ;loopjump ;unloopjump ;circle <number> ;channel <number>")
-            chatMessage(";worm [plr] ;unworm ;spin <number> ;unspin ;admin [plr] ;arch <number> ;stalk [plr] ;unstalk ;help")
+            chatMessage(";orbit2-6 [plr] <radius> <speed> ;unorbit ;goto [plr] ;align [plr] ;ws <number> ;loopjump ;unloopjump ;circle <number> ;channel <number>")
+            chatMessage(";worm [plr] ;unworm ;spin <number> ;unspin ;admin [plr] ;arch <number> ;stalk [plr] ;unstalk ;tower [plr] ;untower ;fix ;help")
         end
 
-    elseif command:sub(1, 5) == "spin " and table.find(bots, user) and cmdspin then
+    elseif command:sub(1, 5) == "spin " and cmdspin then
         local spinarg = tonumber(command:sub(6))
-        boolspin = true
-        spin(spinarg)
+        if spinarg then boolspin = true; spin(spinarg) end
 
-    elseif command == "unspin" and table.find(bots, user) and cmdunspin then
+    elseif command == "unspin" and cmdunspin then
         boolspin = false
 
-    elseif command:sub(1, 3) == "ws " and table.find(bots, user) and cmdws then
-        local wsarg = tonumber(command:sub(4))
-        if wsarg then
-            player.Character.Humanoid.WalkSpeed = wsarg
-        end
+    elseif command:sub(1, 3) == "ws " and cmdws then
+        local ws = tonumber(command:sub(4))
+        if ws then player.Character.Humanoid.WalkSpeed = ws end
 
-    elseif command == "undance" and table.find(bots, user) and cmddance then
+    elseif command == "undance" and cmdundance then
         player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
 
-    elseif command:sub(1, 7) == "circle " and table.find(bots, user) and cmdcircle then
+    elseif command:sub(1, 7) == "circle " and cmdcircle then
         disablebool()
-        local circlearg = tonumber(command:sub(8)) or 8
-        tpcircle(circlearg)
+        tpcircle(tonumber(command:sub(8)) or 8)
 
-    elseif command:sub(1, 5) == "arch " and table.find(bots, user) and cmdarch then
+    elseif command:sub(1, 5) == "arch " and cmdarch then
         disablebool()
-        local archarg = tonumber(command:sub(6)) or 8
-        tparch(archarg)
+        tparch(tonumber(command:sub(6)) or 8)
 
-    elseif command:sub(1, 4) == "say " and table.find(bots, user) and cmdsay then
-        local msgcontent = command:sub(5)
-        chatMessage(msgcontent)
+    elseif command:sub(1, 4) == "say " and cmdsay then
+        chatMessage(command:sub(5))
 
-    elseif command == "fix" and table.find(bots, user) and cmdfix then
+    elseif command == "fix" and cmdfix then
         fix()
 
-    elseif command == "jump" and table.find(bots, user) and cmdjump then
+    elseif command == "jump" and cmdjump then
         player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
 
-    elseif command == "unorbit" and table.find(bots, user) and cmdunorbit then
-        orbitbool = false; orbitbool2 = false; orbitbool3 = false
-        orbitbool4 = false; orbitbool5 = false; orbitbool6 = false
-        if index == channel then
-            chatMessage("stopped orbiting")
-        end
+    elseif command == "unorbit" and cmdunorbit then
+        orbitbool=false; orbitbool2=false; orbitbool3=false
+        orbitbool4=false; orbitbool5=false; orbitbool6=false
         game.Workspace.Gravity = 196.2
+        if index == channel then chatMessage("stopped orbiting") end
 
-    elseif command:sub(1, 5) == "goto " and table.find(bots, user) and cmdgoto then
+    elseif command:sub(1, 5) == "goto " and cmdgoto then
         disablebool()
-        local playerName = command:sub(6)
-        local targetPlayer = findPlayerByName(playerName)
-        if targetPlayer then
-            goto(targetPlayer)
-        else
-            if index == channel then
-                chatMessage("Player not found: " .. playerName)
-            end
-        end
+        local target = findPlayerByName(command:sub(6))
+        if target then gotoPlayer(target)
+        else if index == channel then chatMessage("Player not found.") end end
 
-    elseif command:sub(1, 6) == "tower " and table.find(bots, user) and cmdtower then
+    elseif command:sub(1, 6) == "tower " and cmdtower then
         disablebool()
-        local playerName = command:sub(7)
-        local targetPlayer = findPlayerByName(playerName)
-        if targetPlayer then
-            tower(targetPlayer)
-        else
-            if index == channel then
-                chatMessage("Player not found: " .. playerName)
-            end
-        end
+        local target = findPlayerByName(command:sub(7))
+        if target then tower(target)
+        else if index == channel then chatMessage("Player not found.") end end
 
-    elseif command == "unfollow" and table.find(bots, user) and cmdunfollow then
+    elseif command == "unfollow" and cmdunfollow then
         followbool = false
-        if index == channel then
-            chatMessage("stopped following")
-        end
+        if index == channel then chatMessage("stopped following") end
 
-    elseif command == "unworm" and table.find(bots, user) and cmdunworm then
+    elseif command == "unworm" and cmdunworm then
         wormbool = false
-        if index == channel then
-            chatMessage("stopped worm")
-        end
+        if index == channel then chatMessage("stopped worm") end
 
-    elseif command:sub(1, 6) == "orbit " and table.find(bots, user) and cmdorbit then
+    elseif command:sub(1, 6) == "orbit " and cmdorbit then
         disablebool()
-        local args = command:split(" ")
-        local playerName = args[2]
+        local args = splitString(command, " ")
+        local target = findPlayerByName(args[2])
         local r = tonumber(args[3])
         local speed = tonumber(args[4])
-        local targetPlayer = findPlayerByName(playerName)
-        if targetPlayer then
+        if target then
             orbitbool = true
-            if index == channel then
-                chatMessage("Bots are now orbiting " .. targetPlayer.Name)
-            end
-            orbitPlayer(targetPlayer, speed, r)
-        else
-            if index == channel then
-                chatMessage("Player not found: " .. playerName)
-            end
-        end
+            if index == channel then chatMessage("Bots are now orbiting " .. target.Name) end
+            orbitPlayer(target, speed, r)
+        else if index == channel then chatMessage("Player not found.") end end
 
-    elseif command:sub(1, 7) == "orbit2 " and table.find(bots, user) and cmdorbit2 then
+    elseif command:sub(1, 7) == "orbit2 " and cmdorbit2 then
         disablebool()
-        local args = command:split(" ")
-        local playerName = args[2]
+        local args = splitString(command, " ")
+        local target = findPlayerByName(args[2])
         local r = tonumber(args[3])
         local speed = tonumber(args[4])
-        local targetPlayer = findPlayerByName(playerName)
-        if targetPlayer then
+        if target then
             orbitbool2 = true
-            if index == channel then
-                chatMessage("Bots are now orbiting " .. targetPlayer.Name)
-            end
-            orbitPlayer2(targetPlayer, speed, r)
-        else
-            if index == channel then
-                chatMessage("Player not found: " .. playerName)
-            end
-        end
+            if index == channel then chatMessage("Bots are now orbiting " .. target.Name) end
+            orbitPlayer2(target, speed, r)
+        else if index == channel then chatMessage("Player not found.") end end
 
-    elseif command:sub(1, 7) == "orbit3 " and table.find(bots, user) and cmdorbit3 then
+    elseif command:sub(1, 7) == "orbit3 " and cmdorbit3 then
         disablebool()
-        local args = command:split(" ")
-        local playerName = args[2]
+        local args = splitString(command, " ")
+        local target = findPlayerByName(args[2])
         local r = tonumber(args[3])
         local speed = tonumber(args[4])
-        local targetPlayer = findPlayerByName(playerName)
-        if targetPlayer then
+        if target then
             orbitbool3 = true
-            if index == channel then
-                chatMessage("Bots are now orbiting " .. targetPlayer.Name)
-            end
-            orbitPlayer3(targetPlayer, speed, r)
-        else
-            if index == channel then
-                chatMessage("Player not found: " .. playerName)
-            end
-        end
+            if index == channel then chatMessage("Bots are now orbiting " .. target.Name) end
+            orbitPlayer3(target, speed, r)
+        else if index == channel then chatMessage("Player not found.") end end
 
-    elseif command:sub(1, 7) == "orbit4 " and table.find(bots, user) and cmdorbit4 then
+    elseif command:sub(1, 7) == "orbit4 " and cmdorbit4 then
         disablebool()
-        local args = command:split(" ")
-        local playerName = args[2]
+        local args = splitString(command, " ")
+        local target = findPlayerByName(args[2])
         local r = tonumber(args[3])
         local speed = tonumber(args[4])
-        local targetPlayer = findPlayerByName(playerName)
-        if targetPlayer then
+        if target then
             orbitbool4 = true
-            if index == channel then
-                chatMessage("Bots are now orbiting " .. targetPlayer.Name)
-            end
-            orbitPlayer4(targetPlayer, speed, r)
-        else
-            if index == channel then
-                chatMessage("Player not found: " .. playerName)
-            end
-        end
+            if index == channel then chatMessage("Bots are now orbiting " .. target.Name) end
+            orbitPlayer4(target, speed, r)
+        else if index == channel then chatMessage("Player not found.") end end
 
-    elseif command:sub(1, 7) == "orbit5 " and table.find(bots, user) and cmdorbit5 then
+    elseif command:sub(1, 7) == "orbit5 " and cmdorbit5 then
         disablebool()
-        local args = command:split(" ")
-        local playerName = args[2]
+        local args = splitString(command, " ")
+        local target = findPlayerByName(args[2])
         local r = tonumber(args[3])
         local speed = tonumber(args[4])
-        local targetPlayer = findPlayerByName(playerName)
-        if targetPlayer then
+        if target then
             orbitbool5 = true
-            if index == channel then
-                chatMessage("Bots are now orbiting " .. targetPlayer.Name)
-            end
-            orbitPlayer5(targetPlayer, speed, r)
-        else
-            if index == channel then
-                chatMessage("Player not found: " .. playerName)
-            end
-        end
+            if index == channel then chatMessage("Bots are now orbiting " .. target.Name) end
+            orbitPlayer5(target, speed, r)
+        else if index == channel then chatMessage("Player not found.") end end
 
-    elseif command:sub(1, 7) == "orbit6 " and table.find(bots, user) and cmdorbit6 then
+    elseif command:sub(1, 7) == "orbit6 " and cmdorbit6 then
         disablebool()
-        local args = command:split(" ")
-        local playerName = args[2]
+        local args = splitString(command, " ")
+        local target = findPlayerByName(args[2])
         local r = tonumber(args[3])
         local speed = tonumber(args[4])
-        local targetPlayer = findPlayerByName(playerName)
-        if targetPlayer then
+        if target then
             orbitbool6 = true
-            if index == channel then
-                chatMessage("Bots are now orbiting " .. targetPlayer.Name)
-            end
-            orbitPlayer6(targetPlayer, speed, r)
-        else
-            if index == channel then
-                chatMessage("Player not found: " .. playerName)
-            end
-        end
+            if index == channel then chatMessage("Bots are now orbiting " .. target.Name) end
+            orbitPlayer6(target, speed, r)
+        else if index == channel then chatMessage("Player not found.") end end
 
-    elseif command == "reset" and table.find(bots, user) and cmdreset then
+    elseif command == "reset" and cmdreset then
         disablebool()
-        player.Character:BreakJoints()
         game.Workspace.Gravity = 196.2
+        player.Character:BreakJoints()
 
-    elseif command:sub(1, 5) == "worm " and table.find(bots, user) and cmdworm then
+    elseif command:sub(1, 5) == "worm " and cmdworm then
         disablebool()
-        local playerName = command:sub(6)
-        local targetPlayer = findPlayerByName(playerName)
-        wormbool = false
-        worm(targetPlayer)
+        local target = findPlayerByName(command:sub(6))
+        worm(target)
 
-    elseif command == "unstalk" and table.find(bots, user) and cmdunstalk then
+    elseif command == "unstalk" and cmdunstalk then
         stalkbool = false
-        if index == channel then
-            chatMessage("Bots stopped stalking")
+        if index == channel then chatMessage("Bots stopped stalking") end
+
+    elseif command:sub(1, 6) == "stalk " and cmdstalk then
+        disablebool()
+        local target = findPlayerByName(command:sub(7))
+        if target then
+            stalkbool = true
+            if index == channel then chatMessage("Bots are now stalking " .. target.Name .. ".") end
+            stalkPlayer(target)
+        else
+            if index == channel then chatMessage("Player not found.") end
         end
 
-    elseif command:sub(1, 6) == "stalk " and table.find(bots, user) and cmdstalk then
+    elseif command:sub(1, 7) == "follow " and cmdfollow then
         disablebool()
-        local playerName = command:sub(7)
-        local targetPlayer = findPlayerByName(playerName)
-        stalkbool = true
-        if targetPlayer then
-            if index == channel then
-                chatMessage("Bots are now stalking " .. targetPlayer.Name .. ".")
-            end
-            stalkPlayer(targetPlayer)
+        local target = findPlayerByName(command:sub(8))
+        if target then
+            followbool = true
+            if index == channel then chatMessage("Bots are now following " .. target.Name .. ".") end
+            followPlayer(target)
         else
-            if index == channel then
-                chatMessage("Player not found: " .. playerName)
-            end
-        end
-
-    elseif command:sub(1, 7) == "follow " and table.find(bots, user) and cmdfollow then
-        disablebool()
-        local playerName = command:sub(8)
-        local targetPlayer = findPlayerByName(playerName)
-        followbool = true
-        if targetPlayer then
-            if index == channel then
-                chatMessage("Bots are now following " .. targetPlayer.Name .. ".")
-            end
-            followPlayer(targetPlayer)
-        else
-            if index == channel then
-                chatMessage("Player not found: " .. playerName)
-            end
+            if index == channel then chatMessage("Player not found.") end
         end
     end
 end
 
--- Expose handleCommand globally so the GUI script can call it directly
--- without going through chat. The GUI passes owner as the sender so
--- permission checks still pass.
-getgenv().BotController_HandleCommand = function(message)
-    handleCommand(message, owner)
-end
+-- ============================================================
+-- GETGENV POLLER - the core of the silent GUI system
+-- Every bot instance polls getgenv().pendingCommand
+-- When the GUI sets it, all bots pick it up and execute locally
+-- ============================================================
+if index then
+    -- initialise the shared command slot once (owner's client sets this)
+    if not getgenv().pendingCommand then
+        getgenv().pendingCommand = ""
+        getgenv().pendingCommandId = 0
+    end
 
--- ============================================================
--- CHAT LISTENER (kept for backwards compatibility / owner typing in chat)
--- ============================================================
-local function connectChatListener(playerpower)
-    playerpower.Chatted:Connect(function(message)
-        if message:sub(1, #prefix) == prefix then
-            handleCommand(message, playerpower.Name)
+    local lastCommandId = 0
+
+    task.spawn(function()
+        while true do
+            local cmdId = getgenv().pendingCommandId
+            if cmdId and cmdId ~= lastCommandId and getgenv().pendingCommand ~= "" then
+                lastCommandId = cmdId
+                local cmd = getgenv().pendingCommand
+                local ok, err = xpcall(function()
+                    handleCommand(cmd)
+                end, function(e)
+                    warn("[BotController] Error handling command '" .. tostring(cmd) .. "': " .. tostring(e))
+                end)
+            end
+            task.wait(0.1)
         end
     end)
 end
 
--- Listen to owner
+-- ============================================================
+-- CHAT LISTENER - kept so typing in chat still works too
+-- ============================================================
+local function connectChatListener(playerpower)
+    playerpower.Chatted:Connect(function(message)
+        if message:sub(1, #prefix) == prefix then
+            task.spawn(function()
+                handleCommand(message)
+            end)
+        end
+    end)
+end
+
 if ownerPlayer then
     connectChatListener(ownerPlayer)
 end
 
--- Listen to admins who join later
 game.Players.PlayerAdded:Connect(function(newPlayer)
     if table.find(Admins, newPlayer.Name) then
         connectChatListener(newPlayer)
     end
 end)
-
--- Poll for newly added admins
-while adminbool do
-    for _, adminName in pairs(adminNotConnected) do
-        local adminPlayer = game.Players:FindFirstChild(adminName)
-        if adminPlayer then
-            connectChatListener(adminPlayer)
-            table.remove(adminNotConnected, table.find(adminNotConnected, adminName))
-        end
-    end
-    wait(2)
-end
