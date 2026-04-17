@@ -108,31 +108,35 @@ local function JLNCIR_fake_script()
     -- Sends the command privately by calling the bot controller's exposed
     -- global function directly. No chat message is ever sent.
     local function sendCommand(rawInput)
-        rawInput = rawInput:match("^%s*(.-)%s*$")
-        print("[CmdGui] sendCommand called with: '" .. rawInput .. "'")  -- ADD THIS
+        rawInput = rawInput:match("^%s*(.-)%s*$") -- trim whitespace
         if rawInput == "" then return end
-    
+
+        -- Strip prefix if the user typed it, handleCommand accepts with or without
         local message = rawInput
         if message:sub(1, #prefix) == prefix then
             message = message:sub(#prefix + 1)
         end
-        
-        print("[CmdGui] message after strip: '" .. message .. "'")  -- ADD THIS
-        print("[CmdGui] HandleCommand exists: " .. tostring(getgenv().BotController_HandleCommand ~= nil))  -- ADD THIS
-    
+
+        -- Wait briefly for bot controller to finish loading if called very early
         local attempts = 0
         while not getgenv().BotController_HandleCommand and attempts < 20 do
             task.wait(0.5)
             attempts += 1
         end
-    
+
         if getgenv().BotController_HandleCommand then
-            print("[CmdGui] Calling HandleCommand...")  -- ADD THIS
+            print("[CmdGui] Sending command: '" .. message .. "'")
+            -- Wrap in coroutine so blocking commands (follow, worm, stalk, loopjump)
+            -- don't freeze the GUI. Use xpcall so errors are visible instead of silent.
             coroutine.wrap(function()
-                getgenv().BotController_HandleCommand(message)
+                local ok, err = xpcall(function()
+                    getgenv().BotController_HandleCommand(message)
+                end, function(e)
+                    warn("[CmdGui] Error in HandleCommand: " .. tostring(e) .. "\n" .. debug.traceback())
+                end)
             end)()
         else
-            warn("[CmdGui] BotController_HandleCommand not found.")
+            warn("[CmdGui] BotController_HandleCommand not found. Is the bot controller loaded?")
         end
     end
 
