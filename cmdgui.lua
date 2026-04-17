@@ -108,30 +108,31 @@ local function JLNCIR_fake_script()
     -- Sends the command privately by calling the bot controller's exposed
     -- global function directly. No chat message is ever sent.
     local function sendCommand(rawInput)
-        rawInput = rawInput:match("^%s*(.-)%s*$") -- trim whitespace
+        rawInput = rawInput:match("^%s*(.-)%s*$")
+        print("[CmdGui] sendCommand called with: '" .. rawInput .. "'")  -- ADD THIS
         if rawInput == "" then return end
-
-        -- Strip prefix if the user typed it, handleCommand accepts with or without
+    
         local message = rawInput
         if message:sub(1, #prefix) == prefix then
             message = message:sub(#prefix + 1)
         end
-
-        -- Wait briefly for bot controller to finish loading if called very early
+        
+        print("[CmdGui] message after strip: '" .. message .. "'")  -- ADD THIS
+        print("[CmdGui] HandleCommand exists: " .. tostring(getgenv().BotController_HandleCommand ~= nil))  -- ADD THIS
+    
         local attempts = 0
         while not getgenv().BotController_HandleCommand and attempts < 20 do
             task.wait(0.5)
             attempts += 1
         end
-
+    
         if getgenv().BotController_HandleCommand then
-            -- Wrap in coroutine so blocking commands (follow, worm, stalk, loopjump)
-            -- don't freeze the GUI
+            print("[CmdGui] Calling HandleCommand...")  -- ADD THIS
             coroutine.wrap(function()
                 getgenv().BotController_HandleCommand(message)
             end)()
         else
-            warn("[CmdGui] BotController_HandleCommand not found. Is the bot controller loaded?")
+            warn("[CmdGui] BotController_HandleCommand not found.")
         end
     end
 
