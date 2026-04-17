@@ -374,8 +374,7 @@ local function spin(spinSpeed)
 end
 
 local function worm(msgtarget2)
-    local displayName = player.DisplayName
-    local indexworm = table.find(bots, displayName)
+    local indexworm = table.find(bots, user)
     if not indexworm then return end
     if indexworm > 1 then
         local targetBotName = bots[indexworm - 1]
@@ -592,10 +591,10 @@ local function handleCommand(message, senderName)
 
     local command = message
 
-    if command == "status" and cmdstatus and table.find(bots, displayName) then
+    if command == "status" and cmdstatus and table.find(bots, user) then
         chatMessage(displayName .. " (Bot " .. index .. ") is active!")
 
-    elseif command:sub(1, 6) == "admin " and table.find(bots, displayName) and cmdadmin then
+    elseif command:sub(1, 6) == "admin " and table.find(bots, user) and cmdadmin then
         local adminargs = command:sub(7)
         local targetPlayerforadmin = findPlayerByName(adminargs)
         if targetPlayerforadmin then
@@ -609,7 +608,7 @@ local function handleCommand(message, senderName)
             end
         end
 
-    elseif command == "quit" and table.find(bots, displayName) and cmdquit then
+    elseif command == "quit" and table.find(bots, user) and cmdquit then
         cmdstatus = false; cmdindex = false; cmdfollow = false; cmdquit = false
         cmddance = false; cmdundance = false; cmdreset = false; cmdjump = false
         cmdsay = false; cmdunfollow = false; cmdorbit = false; orbitbool = false
@@ -629,10 +628,10 @@ local function handleCommand(message, senderName)
         adminNotConnected = {}
         chatMessage("quit")
 
-    elseif command == "index" and cmdindex and table.find(bots, displayName) then
+    elseif command == "index" and cmdindex and table.find(bots, user) then
         chatMessage(displayName .. " index is (" .. index .. ")")
 
-    elseif command:sub(1, 8) == "channel " and cmdchannel and table.find(bots, displayName) then
+    elseif command:sub(1, 8) == "channel " and cmdchannel and table.find(bots, user) then
         local chnl = tonumber(command:sub(9))
         if chnl > nbbot or chnl < 1 then
             if index == channel then
@@ -645,20 +644,20 @@ local function handleCommand(message, senderName)
             end
         end
 
-    elseif command == "unloopjump" and cmdunloopjump and table.find(bots, displayName) then
+    elseif command == "unloopjump" and cmdunloopjump and table.find(bots, user) then
         booljump = false
 
-    elseif command == "untower" and cmduntower and table.find(bots, displayName) then
+    elseif command == "untower" and cmduntower and table.find(bots, user) then
         towerbool = false
 
-    elseif command == "loopjump" and cmdloopjump and table.find(bots, displayName) then
+    elseif command == "loopjump" and cmdloopjump and table.find(bots, user) then
         booljump = true
         while booljump do
             player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
             wait(0.8)
         end
 
-    elseif command:sub(1, 6) == "align " and cmdalign and table.find(bots, displayName) then
+    elseif command:sub(1, 6) == "align " and cmdalign and table.find(bots, user) then
         disablebool()
         local playerName = command:sub(7)
         local targetPlayer = findPlayerByName(playerName)
@@ -673,22 +672,22 @@ local function handleCommand(message, senderName)
             end
         end
 
-    elseif command == "dance" and table.find(bots, displayName) and cmddance then
+    elseif command == "dance" and table.find(bots, user) and cmddance then
         chatMessage("/e dance")
 
-    elseif command == "dance 1" and table.find(bots, displayName) and cmddance then
+    elseif command == "dance 1" and table.find(bots, user) and cmddance then
         chatMessage("/e dance1")
 
-    elseif command == "dance 2" and table.find(bots, displayName) and cmddance then
+    elseif command == "dance 2" and table.find(bots, user) and cmddance then
         chatMessage("/e dance2")
 
-    elseif command == "dance 3" and table.find(bots, displayName) and cmddance then
+    elseif command == "dance 3" and table.find(bots, user) and cmddance then
         chatMessage("/e dance3")
 
-    elseif command == "dance 4" and table.find(bots, displayName) and cmddance then
+    elseif command == "dance 4" and table.find(bots, user) and cmddance then
         chatMessage("/e dance4")
 
-    elseif command == "help" and table.find(bots, displayName) and cmdhelp then
+    elseif command == "help" and table.find(bots, user) and cmdhelp then
         if index == channel then
             chatMessage("available commands:")
             chatMessage(";status ;index ;follow [plr] ;quit ;dance <number> ;undance ;reset ;jump ;say <sentence> ;unfollow ;orbit [plr] <radius> <speed>")
@@ -697,44 +696,44 @@ local function handleCommand(message, senderName)
             chatMessage(";worm [plr] ;unworm ;spin <number> ;unspin ;admin [plr] ;arch <number> ;stalk [plr] ;unstalk ;help")
         end
 
-    elseif command:sub(1, 5) == "spin " and table.find(bots, displayName) and cmdspin then
+    elseif command:sub(1, 5) == "spin " and table.find(bots, user) and cmdspin then
         local spinarg = tonumber(command:sub(6))
         boolspin = true
         spin(spinarg)
 
-    elseif command == "unspin" and table.find(bots, displayName) and cmdunspin then
+    elseif command == "unspin" and table.find(bots, user) and cmdunspin then
         boolspin = false
 
-    elseif command:sub(1, 3) == "ws " and table.find(bots, displayName) and cmdws then
+    elseif command:sub(1, 3) == "ws " and table.find(bots, user) and cmdws then
         local wsarg = tonumber(command:sub(4))
         if wsarg then
             player.Character.Humanoid.WalkSpeed = wsarg
         end
 
-    elseif command == "undance" and table.find(bots, displayName) and cmddance then
+    elseif command == "undance" and table.find(bots, user) and cmddance then
         player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
 
-    elseif command:sub(1, 7) == "circle " and table.find(bots, displayName) and cmdcircle then
+    elseif command:sub(1, 7) == "circle " and table.find(bots, user) and cmdcircle then
         disablebool()
         local circlearg = tonumber(command:sub(8)) or 8
         tpcircle(circlearg)
 
-    elseif command:sub(1, 5) == "arch " and table.find(bots, displayName) and cmdarch then
+    elseif command:sub(1, 5) == "arch " and table.find(bots, user) and cmdarch then
         disablebool()
         local archarg = tonumber(command:sub(6)) or 8
         tparch(archarg)
 
-    elseif command:sub(1, 4) == "say " and table.find(bots, displayName) and cmdsay then
+    elseif command:sub(1, 4) == "say " and table.find(bots, user) and cmdsay then
         local msgcontent = command:sub(5)
         chatMessage(msgcontent)
 
-    elseif command == "fix" and table.find(bots, displayName) and cmdfix then
+    elseif command == "fix" and table.find(bots, user) and cmdfix then
         fix()
 
-    elseif command == "jump" and table.find(bots, displayName) and cmdjump then
+    elseif command == "jump" and table.find(bots, user) and cmdjump then
         player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
 
-    elseif command == "unorbit" and table.find(bots, displayName) and cmdunorbit then
+    elseif command == "unorbit" and table.find(bots, user) and cmdunorbit then
         orbitbool = false; orbitbool2 = false; orbitbool3 = false
         orbitbool4 = false; orbitbool5 = false; orbitbool6 = false
         if index == channel then
@@ -742,7 +741,7 @@ local function handleCommand(message, senderName)
         end
         game.Workspace.Gravity = 196.2
 
-    elseif command:sub(1, 5) == "goto " and table.find(bots, displayName) and cmdgoto then
+    elseif command:sub(1, 5) == "goto " and table.find(bots, user) and cmdgoto then
         disablebool()
         local playerName = command:sub(6)
         local targetPlayer = findPlayerByName(playerName)
@@ -754,7 +753,7 @@ local function handleCommand(message, senderName)
             end
         end
 
-    elseif command:sub(1, 6) == "tower " and table.find(bots, displayName) and cmdtower then
+    elseif command:sub(1, 6) == "tower " and table.find(bots, user) and cmdtower then
         disablebool()
         local playerName = command:sub(7)
         local targetPlayer = findPlayerByName(playerName)
@@ -766,19 +765,19 @@ local function handleCommand(message, senderName)
             end
         end
 
-    elseif command == "unfollow" and table.find(bots, displayName) and cmdunfollow then
+    elseif command == "unfollow" and table.find(bots, user) and cmdunfollow then
         followbool = false
         if index == channel then
             chatMessage("stopped following")
         end
 
-    elseif command == "unworm" and table.find(bots, displayName) and cmdunworm then
+    elseif command == "unworm" and table.find(bots, user) and cmdunworm then
         wormbool = false
         if index == channel then
             chatMessage("stopped worm")
         end
 
-    elseif command:sub(1, 6) == "orbit " and table.find(bots, displayName) and cmdorbit then
+    elseif command:sub(1, 6) == "orbit " and table.find(bots, user) and cmdorbit then
         disablebool()
         local args = command:split(" ")
         local playerName = args[2]
@@ -797,7 +796,7 @@ local function handleCommand(message, senderName)
             end
         end
 
-    elseif command:sub(1, 7) == "orbit2 " and table.find(bots, displayName) and cmdorbit2 then
+    elseif command:sub(1, 7) == "orbit2 " and table.find(bots, user) and cmdorbit2 then
         disablebool()
         local args = command:split(" ")
         local playerName = args[2]
@@ -816,7 +815,7 @@ local function handleCommand(message, senderName)
             end
         end
 
-    elseif command:sub(1, 7) == "orbit3 " and table.find(bots, displayName) and cmdorbit3 then
+    elseif command:sub(1, 7) == "orbit3 " and table.find(bots, user) and cmdorbit3 then
         disablebool()
         local args = command:split(" ")
         local playerName = args[2]
@@ -835,7 +834,7 @@ local function handleCommand(message, senderName)
             end
         end
 
-    elseif command:sub(1, 7) == "orbit4 " and table.find(bots, displayName) and cmdorbit4 then
+    elseif command:sub(1, 7) == "orbit4 " and table.find(bots, user) and cmdorbit4 then
         disablebool()
         local args = command:split(" ")
         local playerName = args[2]
@@ -854,7 +853,7 @@ local function handleCommand(message, senderName)
             end
         end
 
-    elseif command:sub(1, 7) == "orbit5 " and table.find(bots, displayName) and cmdorbit5 then
+    elseif command:sub(1, 7) == "orbit5 " and table.find(bots, user) and cmdorbit5 then
         disablebool()
         local args = command:split(" ")
         local playerName = args[2]
@@ -873,7 +872,7 @@ local function handleCommand(message, senderName)
             end
         end
 
-    elseif command:sub(1, 7) == "orbit6 " and table.find(bots, displayName) and cmdorbit6 then
+    elseif command:sub(1, 7) == "orbit6 " and table.find(bots, user) and cmdorbit6 then
         disablebool()
         local args = command:split(" ")
         local playerName = args[2]
@@ -892,25 +891,25 @@ local function handleCommand(message, senderName)
             end
         end
 
-    elseif command == "reset" and table.find(bots, displayName) and cmdreset then
+    elseif command == "reset" and table.find(bots, user) and cmdreset then
         disablebool()
         player.Character:BreakJoints()
         game.Workspace.Gravity = 196.2
 
-    elseif command:sub(1, 5) == "worm " and table.find(bots, displayName) and cmdworm then
+    elseif command:sub(1, 5) == "worm " and table.find(bots, user) and cmdworm then
         disablebool()
         local playerName = command:sub(6)
         local targetPlayer = findPlayerByName(playerName)
         wormbool = false
         worm(targetPlayer)
 
-    elseif command == "unstalk" and table.find(bots, displayName) and cmdunstalk then
+    elseif command == "unstalk" and table.find(bots, user) and cmdunstalk then
         stalkbool = false
         if index == channel then
             chatMessage("Bots stopped stalking")
         end
 
-    elseif command:sub(1, 6) == "stalk " and table.find(bots, displayName) and cmdstalk then
+    elseif command:sub(1, 6) == "stalk " and table.find(bots, user) and cmdstalk then
         disablebool()
         local playerName = command:sub(7)
         local targetPlayer = findPlayerByName(playerName)
@@ -926,7 +925,7 @@ local function handleCommand(message, senderName)
             end
         end
 
-    elseif command:sub(1, 7) == "follow " and table.find(bots, displayName) and cmdfollow then
+    elseif command:sub(1, 7) == "follow " and table.find(bots, user) and cmdfollow then
         disablebool()
         local playerName = command:sub(8)
         local targetPlayer = findPlayerByName(playerName)
